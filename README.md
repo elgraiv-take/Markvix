@@ -45,7 +45,7 @@
 または、Windows ではリポジトリ直下から以下のバッチでも実行できます。
 
 ```bash
-run_markvix_electron_dev.bat
+run_markvix_dev.bat
 ```
 
 ### ビルド & 配布用バイナリ作成

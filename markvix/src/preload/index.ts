@@ -3,7 +3,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 // Custom APIs for renderer
 const api = {
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
-  scanMarkdownFiles: (root: string) => ipcRenderer.invoke('fs:scanMarkdownFiles', root),
+  scanMarkdownFiles: () => ipcRenderer.invoke('fs:scanMarkdownFiles'),
   readFile: (path: string) => ipcRenderer.invoke('fs:readFile', path),
   resolveDropPath: (rawPath: string) => ipcRenderer.invoke('fs:resolveDropPath', rawPath),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),

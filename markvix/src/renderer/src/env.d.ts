@@ -3,7 +3,7 @@
 interface Window {
   api: {
     openFolder: () => Promise<string | null>;
-    scanMarkdownFiles: (root: string) => Promise<
+    scanMarkdownFiles: () => Promise<
       { path: string; relative_path: string }[]
     >;
     readFile: (path: string) => Promise<string>;
