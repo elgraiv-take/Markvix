@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #f6f6f6;
+  --color-surface: #ffffff;
+  --color-border: #e4e4e7;
+  --color-text: #18181b;
+  --color-text-muted: #71717a;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+}
+
+body {
+  @apply bg-[var(--color-bg)] text-[var(--color-text)] antialiased;
+}
+
+/* Preview panel markdown */
+.preview-panel h1 { font-size: 1.75rem; font-weight: 700; margin: 1em 0 0.5em; }
+.preview-panel h2 { font-size: 1.4rem; font-weight: 600; margin: 1em 0 0.5em; }
+.preview-panel h3 { font-size: 1.2rem; font-weight: 600; margin: 0.75em 0 0.5em; }
+.preview-panel p { margin: 0.5em 0; line-height: 1.6; }
+.preview-panel ul, .preview-panel ol { margin: 0.5em 0; padding-left: 1.5em; }
+.preview-panel code { background: var(--color-surface); padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; }
+.preview-panel pre { background: var(--color-surface); padding: 1em; border-radius: 6px; overflow-x: auto; margin: 0.5em 0; }
+.preview-panel pre code { padding: 0; background: none; }
+.preview-panel a { color: var(--color-accent); }
+.preview-panel blockquote { border-left: 4px solid var(--color-border); margin: 0.5em 0; padding-left: 1em; color: var(--color-text-muted); }
+.preview-panel table { border-collapse: collapse; width: 100%; margin: 0.5em 0; }
+.preview-panel th, .preview-panel td { border: 1px solid var(--color-border); padding: 0.4em 0.75em; text-align: left; }
+.preview-panel th { background: var(--color-surface); font-weight: 600; }
