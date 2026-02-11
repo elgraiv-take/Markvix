@@ -11,6 +11,10 @@ interface Window {
     getPathForFile?: (file: File) => string;
     log?: (payload: Record<string, unknown>) => void;
     getInitialRoot?: () => Promise<string | null>;
+    onEntriesUpdated?: (
+      handler: (entries: { path: string; relative_path: string }[]) => void
+    ) => () => void;
+    onFileChanged?: (handler: (fullPath: string) => void) => () => void;
   };
   /** フォルダ D&D 時に main.tsx から呼び出されるハンドラ */
   markvixLoadFolderFromDrop?: (path: string) => void;

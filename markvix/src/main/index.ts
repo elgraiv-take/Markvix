@@ -1,12 +1,14 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { dirname, isAbsolute, join, relative, sep, resolve, normalize } from 'path'
 import { fileURLToPath } from 'url'
-import { promises as fs } from 'fs'
+import { promises as fs, watch, type FSWatcher } from 'fs'
 import icon from '../../resources/icon.png?asset'
 
 const markdownExtensions = new Set(['.md', '.mdx', '.markdown'])
 
 let currentRootDir: string | null = null
+let rootWatcher: FSWatcher | null = null
+let scanTimeout: NodeJS.Timeout | null = null
 
 function normalizePath(p: string): string {
   return normalize(resolve(p))
@@ -69,6 +71,92 @@ async function scanMarkdownFiles(root: string): Promise<{ path: string; relative
 
   await walk(root)
   return results
+}
+
+function broadcastEntriesUpdated(entries: { path: string; relative_path: string }[]): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('fs:entriesUpdated', entries)
+  }
+}
+
+function broadcastFileChanged(fullPath: string): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send('fs:fileChanged', fullPath)
+  }
+}
+
+async function triggerRescan(): Promise<void> {
+  if (!currentRootDir) return
+  try {
+    const entries = await scanMarkdownFiles(currentRootDir)
+    broadcastEntriesUpdated(entries)
+  } catch (error) {
+    console.warn('[markvix] failed to rescan markdown files:', error)
+  }
+}
+
+function scheduleRescan(): void {
+  if (scanTimeout) {
+    clearTimeout(scanTimeout)
+  }
+  scanTimeout = setTimeout(() => {
+    scanTimeout = null
+    void triggerRescan()
+  }, 500)
+}
+
+function startRootWatcher(root: string): void {
+  if (rootWatcher) {
+    rootWatcher.close()
+    rootWatcher = null
+  }
+
+  try {
+    rootWatcher = watch(
+      root,
+      {
+        recursive: true
+      },
+      (eventType, filename) => {
+        // filename が取れないケースもあるので、その場合もツリー再スキャンだけは行う
+        if (!currentRootDir) return
+
+        scheduleRescan()
+
+        if (!filename) return
+
+        const fullPath = join(root, filename)
+        if (!isPathInsideRoot(currentRootDir, fullPath)) {
+          return
+        }
+
+        if (eventType === 'change' || eventType === 'rename') {
+          const dot = filename.lastIndexOf('.')
+          if (dot < 0) return
+          const ext = filename.slice(dot).toLowerCase()
+          if (!markdownExtensions.has(ext)) return
+          broadcastFileChanged(normalizePath(fullPath))
+        }
+      }
+    )
+
+    rootWatcher.on('error', (error) => {
+      console.warn('[markvix] root watcher error:', error)
+      rootWatcher?.close()
+      rootWatcher = null
+    })
+  } catch (error) {
+    // Windows 以外で recursive オプションが未対応など、fs.watch 自体が使えない環境では
+    // 自動更新をあきらめ、手動の「更新」にフォールバックする。
+    console.warn('[markvix] failed to start root watcher:', error)
+    rootWatcher = null
+  }
+}
+
+function setCurrentRootDir(nextRoot: string): void {
+  const normalized = normalizePath(nextRoot)
+  currentRootDir = normalized
+  startRootWatcher(normalized)
 }
 
 function createWindow(): void {
@@ -155,7 +243,7 @@ app.whenReady().then(() => {
     const initial = await getInitialRootFromArgs()
     if (initial) {
       // 起動引数で指定されたディレクトリをルートとして採用する
-      currentRootDir = normalizePath(initial)
+      setCurrentRootDir(initial)
     }
     return initial
   })
@@ -167,7 +255,7 @@ app.whenReady().then(() => {
     if (result.canceled || result.filePaths.length === 0) return null
     const selected = result.filePaths[0] ?? null
     if (!selected) return null
-    currentRootDir = normalizePath(selected)
+    setCurrentRootDir(selected)
     return currentRootDir
   })
 
@@ -208,13 +296,13 @@ app.whenReady().then(() => {
     try {
       const stat = await fs.stat(candidate)
       if (stat.isDirectory()) {
-        currentRootDir = normalizePath(candidate)
+        setCurrentRootDir(candidate)
         return currentRootDir
       }
       if (stat.isFile()) {
         const dir = dirname(candidate)
-        currentRootDir = normalizePath(dir)
-        return dir
+        setCurrentRootDir(dir)
+        return currentRootDir
       }
     } catch {
       return null
@@ -242,6 +330,10 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  if (rootWatcher) {
+    rootWatcher.close()
+    rootWatcher = null
+  }
   if (process.platform !== 'darwin') {
     app.quit()
   }

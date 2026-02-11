@@ -160,6 +160,44 @@ function App() {
 
   const treeNodes = buildTree(entries);
 
+  // ディレクトリ監視イベントからの自動更新
+  useEffect(() => {
+    if (!rootPath) return;
+    const unsubscribeEntries = window.api.onEntriesUpdated?.((nextEntries) => {
+      setEntries(nextEntries);
+      // 自動処理ではタブは変更しない（仕様どおり、削除されたファイルのタブも閉じない）
+    });
+
+    const unsubscribeFileChanged = window.api.onFileChanged?.((fullPath) => {
+      setTabs((prev) => {
+        const exists = prev.some((tab) => tab.path === fullPath);
+        if (!exists) return prev;
+
+        // 対象タブが存在する場合のみ、内容を再読み込みする
+        (async () => {
+          try {
+            const content = await window.api.readFile(fullPath);
+            setTabs((current) =>
+              current.map((tab) =>
+                tab.path === fullPath ? { ...tab, content } : tab
+              )
+            );
+          } catch (e) {
+            // ファイル削除や権限エラーなどの場合は、既存コンテンツを維持しつつエラーメッセージだけ表示
+            setError(`ファイルを再読み込みできませんでした: ${String(e)}`);
+          }
+        })();
+
+        return prev;
+      });
+    });
+
+    return () => {
+      unsubscribeEntries?.();
+      unsubscribeFileChanged?.();
+    };
+  }, [rootPath]);
+
   return (
     <div className="h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
       <header className="shrink-0 flex items-center gap-3 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
