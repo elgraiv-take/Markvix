@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { FolderTree } from "./components/FolderTree";
 import { PreviewPanel } from "./components/PreviewPanel";
 import { buildTree } from "./utils/tree";
@@ -10,11 +10,14 @@ function getTitle(path: string): string {
 }
 
 function App() {
+  const layoutRef = useRef<HTMLDivElement | null>(null);
   const [rootPath, setRootPath] = useState<string | null>(null);
   const [entries, setEntries] = useState<MarkdownEntry[]>([]);
   const [tabs, setTabs] = useState<OpenTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [treeWidth, setTreeWidth] = useState(256);
+  const [isResizingTree, setIsResizingTree] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -160,6 +163,34 @@ function App() {
 
   const treeNodes = buildTree(entries);
 
+  const startTreeResize = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsResizingTree(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizingTree) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = layoutRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const minWidth = 180;
+      const maxWidth = Math.max(minWidth, rect.width - 260);
+      const nextWidth = Math.min(maxWidth, Math.max(minWidth, e.clientX - rect.left));
+      setTreeWidth(nextWidth);
+    };
+
+    const handleMouseUp = () => setIsResizingTree(false);
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizingTree]);
+
   // ディレクトリ監視イベントからの自動更新
   useEffect(() => {
     if (!rootPath) return;
@@ -217,8 +248,11 @@ function App() {
         {error && <span className="text-sm text-red-400">{error}</span>}
       </header>
 
-      <div className="flex-1 flex min-h-0">
-        <aside className="w-64 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col">
+      <div ref={layoutRef} className="flex-1 flex min-h-0">
+        <aside
+          className="shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col"
+          style={{ width: `${treeWidth}px` }}
+        >
           <div className="px-2 py-2 text-xs font-medium text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
             Files
           </div>
@@ -229,6 +263,16 @@ function App() {
             onRefresh={rootPath ? refreshFolder : undefined}
           />
         </aside>
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize file tree"
+          onMouseDown={startTreeResize}
+          onDoubleClick={() => setTreeWidth(256)}
+          className={`w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-[var(--color-accent)]/40 ${
+            isResizingTree ? "bg-[var(--color-accent)]/60" : ""
+          }`}
+        />
         <main className="flex-1 min-w-0 flex flex-col">
           <PreviewPanel
             tabs={tabs}
