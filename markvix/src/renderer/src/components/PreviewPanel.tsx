@@ -9,7 +9,15 @@ mermaid.initialize({
   theme: "default",
   // セキュリティ強化のため strict に設定（任意JS実行などを無効化）
   securityLevel: "strict",
+  // 構文エラー時に body へエラー SVG を挿入しない（自前 UI で表示）
+  suppressErrorRendering: true,
 });
+
+function cleanupMermaidTempDom(id: string): void {
+  document.getElementById(`d${id}`)?.remove();
+  document.getElementById(id)?.remove();
+  document.getElementById(`i${id}`)?.remove();
+}
 
 function MermaidBlock({ code }: { code: string }) {
   const [svg, setSvg] = useState<string | null>(null);
@@ -27,9 +35,13 @@ function MermaidBlock({ code }: { code: string }) {
       })
       .catch((e) => {
         if (!cancelled) setErr(String(e.message ?? e));
+      })
+      .finally(() => {
+        cleanupMermaidTempDom(id);
       });
     return () => {
       cancelled = true;
+      cleanupMermaidTempDom(id);
     };
   }, [code]);
 
