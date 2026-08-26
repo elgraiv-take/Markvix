@@ -11,6 +11,16 @@ interface Window {
     getPathForFile?: (file: File) => string;
     log?: (payload: Record<string, unknown>) => void;
     getInitialRoot?: () => Promise<string | null>;
+    listRecentDirectories: () => Promise<
+      { id: string; path: string; openedAt: string; exists: boolean }[]
+    >;
+    openRecentDirectory: (id: string) => Promise<string | null>;
+    removeRecentDirectory: (
+      id: string
+    ) => Promise<{ id: string; path: string; openedAt: string; exists: boolean }[]>;
+    removeAllRecentDirectories: () => Promise<
+      { id: string; path: string; openedAt: string; exists: boolean }[]
+    >;
     onEntriesUpdated?: (
       handler: (entries: { path: string; relative_path: string }[]) => void
     ) => () => void;

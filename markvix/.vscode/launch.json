@@ -5,15 +5,19 @@
       "name": "Debug Main Process",
       "type": "node",
       "request": "launch",
-      "cwd": "${workspaceRoot}",
-      "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron-vite",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron-vite",
       "windows": {
-        "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron-vite.cmd"
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron-vite.cmd"
       },
       "runtimeArgs": ["--sourcemap"],
       "env": {
-        "REMOTE_DEBUGGING_PORT": "9222"
-      }
+        "REMOTE_DEBUGGING_PORT": "9222",
+        "ELECTRON_RUN_AS_NODE": ""
+      },
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
     },
     {
       "name": "Debug Renderer Process",
@@ -31,6 +35,7 @@
     {
       "name": "Debug All",
       "configurations": ["Debug Main Process", "Debug Renderer Process"],
+      "stopAll": true,
       "presentation": {
         "order": 1
       }

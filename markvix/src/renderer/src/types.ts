@@ -10,6 +10,13 @@ export interface OpenTab {
   content: string;
 }
 
+export interface RecentDirectory {
+  id: string;
+  path: string;
+  openedAt: string;
+  exists: boolean;
+}
+
 export type TreeNode = {
   name: string;
   fullPath: string;

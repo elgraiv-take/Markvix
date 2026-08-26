@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "markvix: install",
+      "type": "npm",
+      "script": "install",
+      "path": "markvix/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "markvix: typecheck",
+      "type": "npm",
+      "script": "typecheck",
+      "path": "markvix/",
+      "problemMatcher": ["$tsc"],
+      "group": "build"
+    },
+    {
+      "label": "markvix: dev",
+      "type": "npm",
+      "script": "dev",
+      "path": "markvix/",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "electron-vite",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "starting electron app"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

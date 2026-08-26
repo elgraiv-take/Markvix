@@ -14,6 +14,10 @@ const api = {
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   log: (payload: Record<string, unknown>) => ipcRenderer.send('log:agent', payload),
   getInitialRoot: () => ipcRenderer.invoke('app:getInitialRoot'),
+  listRecentDirectories: () => ipcRenderer.invoke('recent:list'),
+  openRecentDirectory: (id: string) => ipcRenderer.invoke('recent:open', id),
+  removeRecentDirectory: (id: string) => ipcRenderer.invoke('recent:remove', id),
+  removeAllRecentDirectories: () => ipcRenderer.invoke('recent:removeAll'),
   onEntriesUpdated: (handler: (entries: MarkdownEntry[]) => void) => {
     const listener = (_event: unknown, entries: MarkdownEntry[]) => {
       handler(entries)

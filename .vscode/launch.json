@@ -1,0 +1,72 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Main Process",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/markvix",
+      "runtimeExecutable": "${workspaceFolder}/markvix/node_modules/.bin/electron-vite",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/markvix/node_modules/.bin/electron-vite.cmd"
+      },
+      "runtimeArgs": ["--sourcemap"],
+      "env": {
+        "REMOTE_DEBUGGING_PORT": "9222",
+        "ELECTRON_RUN_AS_NODE": ""
+      },
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug Main Process (sample docs)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/markvix",
+      "runtimeExecutable": "${workspaceFolder}/markvix/node_modules/.bin/electron-vite",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/markvix/node_modules/.bin/electron-vite.cmd"
+      },
+      "runtimeArgs": ["--sourcemap", "--", "${workspaceFolder}/markvix_sample_docs"],
+      "env": {
+        "REMOTE_DEBUGGING_PORT": "9222",
+        "ELECTRON_RUN_AS_NODE": ""
+      },
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug Renderer Process",
+      "port": 9222,
+      "request": "attach",
+      "type": "chrome",
+      "webRoot": "${workspaceFolder}/markvix/src/renderer",
+      "timeout": 60000,
+      "presentation": {
+        "hidden": true
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug All",
+      "configurations": ["Debug Main Process", "Debug Renderer Process"],
+      "stopAll": true,
+      "presentation": {
+        "order": 1,
+        "group": "markvix"
+      }
+    },
+    {
+      "name": "Debug All (sample docs)",
+      "configurations": ["Debug Main Process (sample docs)", "Debug Renderer Process"],
+      "stopAll": true,
+      "presentation": {
+        "order": 2,
+        "group": "markvix"
+      }
+    }
+  ]
+}

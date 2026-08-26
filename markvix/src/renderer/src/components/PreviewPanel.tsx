@@ -6,7 +6,7 @@ import type { OpenTab } from "../types";
 
 mermaid.initialize({
   startOnLoad: false,
-  theme: "default",
+  theme: "dark",
   // セキュリティ強化のため strict に設定（任意JS実行などを無効化）
   securityLevel: "strict",
   // 構文エラー時に body へエラー SVG を挿入しない（自前 UI で表示）
@@ -92,17 +92,17 @@ export function PreviewPanel({
   const active = tabs.find((t) => t.id === activeTabId);
 
   return (
-    <div className="flex flex-col h-full bg-[var(--color-bg)]">
+    <div className="flex flex-col h-full bg-[var(--color-surface)]">
       {tabs.length > 0 ? (
         <>
-          <div className="flex items-center gap-0.5 border-b border-[var(--color-border)] bg-[var(--color-surface)] shrink-0">
+          <div className="flex items-center gap-0.5 border-b border-[var(--color-border)] bg-[var(--color-surface)] shrink-0 px-1">
             {tabs.map((tab) => (
               <div
                 key={tab.id}
-                className={`flex items-center gap-1.5 px-3 py-2 border-b-2 cursor-pointer text-sm ${
+                className={`flex items-center gap-1.5 px-3 py-2 border-b-2 cursor-pointer text-[13px] rounded-t-md ${
                   tab.id === activeTabId
-                    ? "border-[var(--color-accent)] text-[var(--color-text)] bg-[var(--color-bg)]"
-                    : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                    ? "border-[var(--color-accent)] text-[var(--color-text)] bg-[var(--color-surface)]"
+                    : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-hover)]"
                 }`}
                 onClick={() => onSelectTab(tab.id)}
               >
@@ -130,7 +130,7 @@ export function PreviewPanel({
           </div>
         </>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)]">
+        <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] text-sm">
           Open a folder or drop one here
         </div>
       )}

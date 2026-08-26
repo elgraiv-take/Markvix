@@ -1,8 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { FolderTree } from "./components/FolderTree";
 import { PreviewPanel } from "./components/PreviewPanel";
+import { RecentDirectoriesManager } from "./components/RecentDirectoriesManager";
+import { RecentDirectoriesMenu } from "./components/RecentDirectoriesMenu";
+import { RecentDirectoriesWelcome } from "./components/RecentDirectoriesWelcome";
 import { buildTree } from "./utils/tree";
-import type { MarkdownEntry, OpenTab } from "./types";
+import type { MarkdownEntry, OpenTab, RecentDirectory } from "./types";
 
 function getTitle(path: string): string {
   const parts = path.replace(/\\/g, "/").split("/");
@@ -20,23 +23,38 @@ function App() {
   const [isResizingTree, setIsResizingTree] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recentDirectories, setRecentDirectories] = useState<RecentDirectory[]>([]);
+  const [managerOpen, setManagerOpen] = useState(false);
 
-  const loadFolder = useCallback(async (path: string) => {
-    setLoading(true);
-    setError(null);
+  const refreshRecentDirectories = useCallback(async () => {
     try {
-      const list = await window.api.scanMarkdownFiles();
-      setRootPath(path);
-      setEntries(list);
-      setTabs([]);
-      setActiveTabId(null);
-      setSelectedPath(null);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
+      const list = await window.api.listRecentDirectories();
+      setRecentDirectories(list);
+    } catch {
+      // 履歴の読み込み失敗はメイン操作を止めない
     }
   }, []);
+
+  const loadFolder = useCallback(
+    async (path: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const list = await window.api.scanMarkdownFiles();
+        setRootPath(path);
+        setEntries(list);
+        setTabs([]);
+        setActiveTabId(null);
+        setSelectedPath(null);
+        await refreshRecentDirectories();
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [refreshRecentDirectories]
+  );
 
   /** 現在のフォルダのみ再スキャン。タブ・選択は維持し、起動画面に戻らない。 */
   const refreshFolder = useCallback(async () => {
@@ -72,6 +90,49 @@ function App() {
       await loadFolder(selected);
     }
   }, [loadFolder]);
+
+  const handleOpenRecent = useCallback(
+    async (id: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const selected = await window.api.openRecentDirectory(id);
+        if (selected) {
+          await loadFolder(selected);
+          setManagerOpen(false);
+        }
+      } catch (e) {
+        setError(`Could not open folder: ${String(e)}`);
+        await refreshRecentDirectories();
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadFolder, refreshRecentDirectories]
+  );
+
+  const handleRemoveRecent = useCallback(async (id: string) => {
+    try {
+      const list = await window.api.removeRecentDirectory(id);
+      setRecentDirectories(list);
+    } catch (e) {
+      setError(`Could not remove recent folder: ${String(e)}`);
+    }
+  }, []);
+
+  const handleRemoveAllRecent = useCallback(async () => {
+    try {
+      const list = await window.api.removeAllRecentDirectories();
+      setRecentDirectories(list);
+    } catch (e) {
+      setError(`Could not remove recent folder: ${String(e)}`);
+    }
+  }, []);
+
+  const openManager = useCallback(() => {
+    void refreshRecentDirectories();
+    setManagerOpen(true);
+  }, [refreshRecentDirectories]);
 
   const openFile = useCallback(
     async (path: string) => {
@@ -128,17 +189,22 @@ function App() {
     (async () => {
       try {
         const initialRoot = await window.api.getInitialRoot?.();
-        if (!cancelled && initialRoot) {
+        if (cancelled) return;
+        if (initialRoot) {
           await loadFolder(initialRoot);
+          return;
         }
+        await refreshRecentDirectories();
       } catch {
-        // 失敗しても UI は通常どおり動くため黙殺
+        if (!cancelled) {
+          await refreshRecentDirectories();
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [loadFolder]);
+  }, [loadFolder, refreshRecentDirectories]);
 
   // main.tsx からのグローバル D&D 呼び出しを受ける
   useEffect(() => {
@@ -231,17 +297,29 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
-      <header className="shrink-0 flex items-center gap-3 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-        <button
-          type="button"
-          onClick={handleOpenFolder}
-          disabled={loading}
-          className="px-3 py-1.5 rounded text-sm font-medium bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
-        >
-          {loading ? "Scanning…" : "Open folder"}
-        </button>
+      <header className="relative z-20 shrink-0 flex items-center gap-3 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="relative inline-flex items-stretch shrink-0">
+          <button
+            type="button"
+            onClick={handleOpenFolder}
+            disabled={loading}
+            className="px-3 py-1.5 rounded-l-md text-sm font-medium bg-[var(--color-accent)] text-[#16171d] hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+          >
+            {loading ? "Scanning…" : "Open folder"}
+          </button>
+          <RecentDirectoriesMenu
+            items={recentDirectories}
+            currentPath={rootPath}
+            disabled={loading}
+            onOpen={handleOpenRecent}
+            onManage={openManager}
+            onMenuOpen={() => {
+              void refreshRecentDirectories();
+            }}
+          />
+        </div>
         {rootPath && (
-          <span className="text-sm text-[var(--color-text-muted)] truncate max-w-[40%]" title={rootPath}>
+          <span className="text-[13px] text-[var(--color-text-muted)] truncate max-w-[40%] font-mono" title={rootPath}>
             {rootPath}
           </span>
         )}
@@ -253,7 +331,7 @@ function App() {
           className="shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col"
           style={{ width: `${treeWidth}px` }}
         >
-          <div className="px-2 py-2 text-xs font-medium text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
+          <div className="px-3 py-2 text-[11px] font-medium tracking-wider uppercase text-[var(--color-text-muted)] border-b border-[var(--color-border)]">
             Files
           </div>
           <FolderTree
@@ -274,14 +352,31 @@ function App() {
           }`}
         />
         <main className="flex-1 min-w-0 flex flex-col">
-          <PreviewPanel
-            tabs={tabs}
-            activeTabId={activeTabId}
-            onSelectTab={setActiveTabId}
-            onCloseTab={closeTab}
-          />
+          {rootPath ? (
+            <PreviewPanel
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onSelectTab={setActiveTabId}
+              onCloseTab={closeTab}
+            />
+          ) : (
+            <RecentDirectoriesWelcome
+              items={recentDirectories}
+              onOpen={handleOpenRecent}
+              onManage={openManager}
+            />
+          )}
         </main>
       </div>
+      <RecentDirectoriesManager
+        open={managerOpen}
+        items={recentDirectories}
+        currentPath={rootPath}
+        onClose={() => setManagerOpen(false)}
+        onOpen={handleOpenRecent}
+        onRemove={handleRemoveRecent}
+        onRemoveAll={handleRemoveAllRecent}
+      />
     </div>
   );
 }

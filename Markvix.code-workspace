@@ -1,7 +1,21 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
-	]
+  "folders": [
+    {
+      "name": "Markvix",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "eslint.workingDirectories": [
+      {
+        "directory": "markvix",
+        "changeProcessCWD": true
+      }
+    ],
+    "typescript.tsdk": "markvix/node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true
+  },
+  "extensions": {
+    "recommendations": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+  }
 }

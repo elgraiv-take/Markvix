@@ -3,6 +3,13 @@ import { dirname, isAbsolute, join, relative, sep, resolve, normalize } from 'pa
 import { fileURLToPath } from 'url'
 import { promises as fs, watch, type FSWatcher } from 'fs'
 import icon from '../../resources/icon.png?asset'
+import {
+  findRecentDirectoryById,
+  listRecentDirectories,
+  rememberRecentDirectory,
+  removeAllRecentDirectories,
+  removeRecentDirectory
+} from './recentDirectories'
 
 const markdownExtensions = new Set(['.md', '.mdx', '.markdown'])
 
@@ -153,10 +160,15 @@ function startRootWatcher(root: string): void {
   }
 }
 
-function setCurrentRootDir(nextRoot: string): void {
+async function setCurrentRootDir(nextRoot: string): Promise<void> {
   const normalized = normalizePath(nextRoot)
   currentRootDir = normalized
   startRootWatcher(normalized)
+  try {
+    await rememberRecentDirectory(normalized)
+  } catch (error) {
+    console.warn('[markvix] failed to remember recent directory:', error)
+  }
 }
 
 function createWindow(): void {
@@ -167,6 +179,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     title: 'Markvix',
+    backgroundColor: '#16171d',
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -243,7 +256,7 @@ app.whenReady().then(() => {
     const initial = await getInitialRootFromArgs()
     if (initial) {
       // 起動引数で指定されたディレクトリをルートとして採用する
-      setCurrentRootDir(initial)
+      await setCurrentRootDir(initial)
     }
     return initial
   })
@@ -255,14 +268,53 @@ app.whenReady().then(() => {
     if (result.canceled || result.filePaths.length === 0) return null
     const selected = result.filePaths[0] ?? null
     if (!selected) return null
-    setCurrentRootDir(selected)
+    await setCurrentRootDir(selected)
     return currentRootDir
+  })
+
+  ipcMain.handle('recent:list', async () => {
+    return listRecentDirectories()
+  })
+
+  ipcMain.handle('recent:open', async (_event, id: string) => {
+    if (!id || typeof id !== 'string') {
+      throw new Error('Invalid recent directory id')
+    }
+    const entry = await findRecentDirectoryById(id)
+    if (!entry) {
+      throw new Error('Recent directory not found')
+    }
+    try {
+      const stat = await fs.stat(entry.path)
+      if (!stat.isDirectory()) {
+        throw new Error('Not a directory')
+      }
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code === 'ENOENT') {
+        throw new Error('Directory does not exist')
+      }
+      throw error
+    }
+    await setCurrentRootDir(entry.path)
+    return currentRootDir
+  })
+
+  ipcMain.handle('recent:remove', async (_event, id: string) => {
+    if (!id || typeof id !== 'string') {
+      throw new Error('Invalid recent directory id')
+    }
+    return removeRecentDirectory(id)
+  })
+
+  ipcMain.handle('recent:removeAll', async () => {
+    return removeAllRecentDirectories()
   })
 
   ipcMain.handle('fs:scanMarkdownFiles', async () => {
     if (!currentRootDir) {
       // Renderer から任意パスを受け取ってルートを変更しないようにするため、
-      // ルートは app:getInitialRoot / dialog:openFolder / fs:resolveDropPath のみで更新する。
+      // ルートは app:getInitialRoot / dialog:openFolder / fs:resolveDropPath / recent:open のみで更新する。
       throw new Error('Root directory is not set')
     }
     return scanMarkdownFiles(currentRootDir)
@@ -296,12 +348,12 @@ app.whenReady().then(() => {
     try {
       const stat = await fs.stat(candidate)
       if (stat.isDirectory()) {
-        setCurrentRootDir(candidate)
+        await setCurrentRootDir(candidate)
         return currentRootDir
       }
       if (stat.isFile()) {
         const dir = dirname(candidate)
-        setCurrentRootDir(dir)
+        await setCurrentRootDir(dir)
         return currentRootDir
       }
     } catch {
