@@ -50,7 +50,13 @@ run_markvix_dev.bat
 
 ### ビルド & 配布用バイナリ作成
 
-Electron Builder によるビルドスクリプトは `markvix/` 配下に定義されています。
+Windows では、リポジトリ直下のパッケージ化バッチを使います。パッチバージョンを当日の日付（`yyMMdd`）に置き換え、インストーラ等を `artifact/` 配下に出力します。
+
+```bash
+build_markvix_package.bat
+```
+
+Electron Builder によるビルドスクリプトは `markvix/` 配下にも定義されています。
 
 ```bash
 cd markvix
@@ -58,8 +64,6 @@ npm run build:win   # Windows
 npm run build:mac   # macOS
 npm run build:linux # Linux
 ```
-
-リポジトリ直下の `build_markvix_bin.bat` を使うと、Windows 用インストーラ等を `.bin/` 配下にまとめて出力できます。
 
 ---
 
@@ -70,5 +74,6 @@ npm run build:linux # Linux
   - `src/preload/` : Preload スクリプト。
   - `src/renderer/` : フロントエンド（React）。
 - `markvix_sample_docs/` : 動作確認用の Markdown ドキュメント群。
-- `.bin/` : ビルド済みバイナリ・インストーラの出力先。
+- `build_markvix_package.bat` : Windows 向け配布パッケージのビルド。
+- `artifact/` : ビルド済みバイナリ・インストーラの出力先。
 
